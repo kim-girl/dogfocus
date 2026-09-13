@@ -53,6 +53,10 @@
     .timer { position: absolute; z-index: 3; left: 50%; top: 67.5%; width: 195px; transform: translate(-50%, -50%); display: grid; place-content: center; }
     .dog-character[data-dog="maltese"] .puppy-clock { width: 77.8%; left: 11.1%; right: auto; }
     .dog-maltese .timer { left: 51.25%; top: 68.9%; }
+    .dog-character[data-dog="hamster"] .puppy-clock { width: 123%; left: -11.5%; top: 2px; right: auto; }
+    .dog-character[data-dog="hamster"] .puppy-clock.hamster-paw { clip-path: polygon(79% 14%, 91% 14%, 95% 19%, 96% 36%, 93% 45%, 87% 50%, 79% 48%, 77% 42%, 79% 29%); transform-origin: 85% 41%; animation: paw-wiggle .62s ease-in-out infinite alternate; }
+    @keyframes paw-wiggle { from { transform: rotate(-1.2deg) translate(0, 0); } to { transform: rotate(1.6deg) translate(2px, -2px); } }
+    .dog-hamster .timer { left: 54.5%; top: 60.3%; }
     .time { font-size: 3.35rem; font-weight: 800; letter-spacing: -.015em; margin-left: -.015em; font-variant-numeric: tabular-nums; }
     .buttons { display: flex; justify-content: center; gap: 10px; }
     button { border: 0; font: inherit; font-weight: 700; cursor: pointer; border-radius: 15px; padding: 13px 20px; transition: transform .15s, filter .15s; }
@@ -70,9 +74,10 @@
     .alert-test { margin-top: 12px; padding: 6px 9px; color: var(--muted); background: transparent; border-radius: 8px; font-size: .74rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
     .alert-test:hover { transform: none; color: var(--coral); }
     .test-result { min-height: 1.2em; margin: 3px 0 0; color: var(--muted); font-size: .7rem; }
-    .count { margin: 28px 0 0; padding: 16px; background: #fff; border-radius: 18px; color: var(--muted); font-size: .9rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .count strong { color: var(--coral); font-size: 1.4rem; margin: 0 4px; line-height: 1; }
-    .dots { color: var(--coral); font-size: 1.2rem; line-height: 1; }
+    .count { width: fit-content; max-width: 100%; margin: 28px auto 0; padding: 14px 20px; background: #fff; border-radius: 18px; color: var(--muted); font-size: .9rem; display: flex; align-items: center; justify-content: center; }
+    .summary { display: grid; gap: 5px; text-align: center; }
+    .summary-line { line-height: 1.35; white-space: nowrap; }
+    .count strong { color: var(--coral); font-weight: 800; margin: 0 2px; }
     .rest #start { background: var(--green); box-shadow: 0 5px 12px rgba(113,173,145,.25); }
     @media (max-width: 380px) { .app { padding: 27px 20px 22px; } .timer-wrap { width: 310px; height: 317px; } .timer { width: 173px; height: 173px; } .time { font-size: 2.95rem; } }
   </style>
@@ -92,32 +97,41 @@
       <div class="dog-character selected" data-dog="maltese">
         <img class="puppy-clock" src="말티즈.png" alt="시계를 안고 있는 말티즈 강아지" />
       </div>
+      <div class="dog-character" data-dog="hamster">
+        <img class="puppy-clock" src="hamster-clock-base.png" alt="시계를 안고 있는 햄찌" />
+        <img class="puppy-clock hamster-paw" src="hamster-clock.png" alt="" aria-hidden="true" />
+      </div>
       <div class="timer"><div class="time" id="time">30:00</div></div>
     </div>
     <div class="buttons"><button id="start">시작하기</button><button id="reset">초기화</button></div>
     <div class="dog-selector" aria-label="강아지 선택">
       <button class="dog-choice" type="button" data-choice="schnauzer" aria-pressed="false">슈나우저</button>
       <button class="dog-choice selected" type="button" data-choice="maltese" aria-pressed="true">말티즈</button>
+      <button class="dog-choice" type="button" data-choice="hamster" aria-pressed="false">햄찌</button>
     </div>
     <button class="alert-test" id="test-alert" type="button">알림과 소리 테스트</button>
     <p class="test-result" id="test-result" aria-live="polite"></p>
-    <div class="count"><span class="dots">●</span><span>오늘 <strong id="count">0</strong>개의 포모도로를 완성했어요</span></div>
+    <div class="count"><div class="summary"><div class="summary-line">오늘 <strong id="count">0</strong>개의 포모도로를 완성했고</div><div class="summary-line">총 <strong id="total-time">0시간 0분</strong> 집중했어요</div></div></div>
   </main>
   <script>
     const REST = 5 * 60;
     const el = id => document.getElementById(id);
     const app = el('app'), timeEl = el('time'), heading = el('heading');
-    const start = el('start'), reset = el('reset'), countEl = el('count');
+    const start = el('start'), reset = el('reset'), countEl = el('count'), totalTimeEl = el('total-time');
     const testAlert = el('test-alert'), testResult = el('test-result');
     const durationButtons = document.querySelectorAll('[data-minutes]');
     const dogCharacters = document.querySelectorAll('.dog-character'), dogChoices = document.querySelectorAll('.dog-choice');
     let workMinutes = 30, isWork = true, remaining = workMinutes * 60, running = false, timerId = null, deadline = null, audioContext = null;
     const todayKey = () => `pomodoro-count-${new Date().toLocaleDateString('sv-SE')}`;
+    const todayMinutesKey = () => `pomodoro-minutes-${new Date().toLocaleDateString('sv-SE')}`;
 
     function getCount() { return Number(localStorage.getItem(todayKey()) || 0); }
+    function getTotalMinutes() { return Number(localStorage.getItem(todayMinutesKey()) || 0); }
+    function formatTotalMinutes(minutes) { return `${Math.floor(minutes / 60)}시간 ${minutes % 60}분`; }
     function selectDog(name) {
       dogCharacters.forEach(item => item.classList.toggle('selected', item.dataset.dog === name));
       app.classList.toggle('dog-maltese', name === 'maltese');
+      app.classList.toggle('dog-hamster', name === 'hamster');
       dogChoices.forEach(item => {
         const selected = item.dataset.choice === name;
         item.classList.toggle('selected', selected);
@@ -130,6 +144,7 @@
       timeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
       app.classList.toggle('rest', !isWork);
       countEl.textContent = getCount();
+      totalTimeEl.textContent = formatTotalMinutes(getTotalMinutes());
       heading.textContent = `${workMinutes === 60 ? '1시간' : `${workMinutes}분`}이라도 집중 좀 해라`;
       document.title = `${timeEl.textContent} · ${isWork ? '집중' : '휴식'} | ${workMinutes}분 포모도로`;
     }
@@ -149,7 +164,11 @@
     }
     function finish() {
       chime();
-      if (isWork) { localStorage.setItem(todayKey(), getCount() + 1); notify('집중 완료! 🍅', '수고했어요. 이제 5분간 쉬어가요.'); }
+      if (isWork) {
+        localStorage.setItem(todayKey(), getCount() + 1);
+        localStorage.setItem(todayMinutesKey(), getTotalMinutes() + workMinutes);
+        notify('집중 완료! 🍅', '수고했어요. 이제 5분간 쉬어가요.');
+      }
       else notify('휴식 완료!', '다시 기분 좋게 집중해볼까요?');
       isWork = !isWork; remaining = isWork ? workMinutes * 60 : REST;
       deadline = Date.now() + remaining * 1000;
