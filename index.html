@@ -45,10 +45,15 @@
     .tomato { font-size: 25px; transform: rotate(-8deg); }
     h1 { font-family: "Bookk Myungjo", "AppleMyungjo", serif; font-size: clamp(1.62rem, 5.4vw, 2.12rem); margin: 0; font-weight: 700; letter-spacing: -.07em; line-height: 1.18; }
     .timer-wrap { position: relative; width: min(100%, 350px); height: 357px; margin: -3px auto 14px; }
+    .dog-character { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .28s ease; }
+    .dog-character.selected { opacity: 1; visibility: visible; }
     .puppy-clock { position: absolute; inset: 0; width: 100%; height: auto; z-index: 1; pointer-events: none; }
     .puppy-clock.stern { opacity: 0; animation: stern-look 3s ease-in-out infinite; }
     @keyframes stern-look { 0%, 28%, 72%, 100% { opacity: 0; } 38%, 62% { opacity: 1; } }
+    .puppy-clock.sniff { opacity: 0; animation: nose-sniff 1.25s ease-in-out infinite; }
+    @keyframes nose-sniff { 0%, 38%, 76%, 100% { opacity: 0; } 50%, 64% { opacity: 1; } }
     .timer { position: absolute; z-index: 3; left: 50%; top: 67.5%; width: 195px; transform: translate(-50%, -50%); display: grid; place-content: center; }
+    .dog-maltese .timer { top: 72.5%; }
     .time { font-size: 3.35rem; font-weight: 800; letter-spacing: -.015em; margin-left: -.015em; font-variant-numeric: tabular-nums; }
     .buttons { display: flex; justify-content: center; gap: 10px; }
     button { border: 0; font: inherit; font-weight: 700; cursor: pointer; border-radius: 15px; padding: 13px 20px; transition: transform .15s, filter .15s; }
@@ -56,6 +61,10 @@
     button:active { transform: translateY(0); }
     #start { min-width: 126px; background: var(--coral); color: #fff; box-shadow: 0 5px 12px rgba(242,140,132,.27); }
     #reset { background: #f2eae7; color: var(--muted); }
+    .dog-selector { display: flex; justify-content: center; gap: 8px; margin: 15px 0 0; }
+    .dog-choice { padding: 8px 12px; color: var(--muted); background: #f2eae7; border-radius: 999px; font-size: .78rem; }
+    .dog-choice:hover { transform: none; }
+    .dog-choice.selected { color: #fff; background: var(--coral); }
     .duration-picker { display: flex; justify-content: center; gap: 8px; margin: 17px 0 3px; }
     .duration-picker button { padding: 8px 13px; border: 1px solid #eadbd0; border-radius: 999px; background: #fffaf6; color: var(--muted); font-size: .78rem; }
     .duration-picker button[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
@@ -78,11 +87,21 @@
       <button type="button" data-minutes="60" aria-pressed="false">1시간 포모도로</button>
     </div>
     <div class="timer-wrap">
-      <img class="puppy-clock" src="schnauzer-clock.png" alt="시계를 안고 있는 슈나우저 강아지" />
-      <img class="puppy-clock stern" src="schnauzer-clock-stern.png" alt="" aria-hidden="true" />
+      <div class="dog-character selected" data-dog="schnauzer">
+        <img class="puppy-clock" src="schnauzer-clock.png" alt="시계를 안고 있는 슈나우저 강아지" />
+        <img class="puppy-clock stern" src="schnauzer-clock-stern.png" alt="" aria-hidden="true" />
+      </div>
+      <div class="dog-character" data-dog="maltese">
+        <img class="puppy-clock" src="maltese-clock.png" alt="시계를 안고 있는 말티즈 강아지" />
+        <img class="puppy-clock sniff" src="maltese-clock-sniff.png" alt="" aria-hidden="true" />
+      </div>
       <div class="timer"><div class="time" id="time">30:00</div></div>
     </div>
     <div class="buttons"><button id="start">시작하기</button><button id="reset">초기화</button></div>
+    <div class="dog-selector" aria-label="강아지 선택">
+      <button class="dog-choice selected" type="button" data-choice="schnauzer" aria-pressed="true">슈나우저</button>
+      <button class="dog-choice" type="button" data-choice="maltese" aria-pressed="false">말티즈</button>
+    </div>
     <button class="alert-test" id="test-alert" type="button">알림과 소리 테스트</button>
     <p class="test-result" id="test-result" aria-live="polite"></p>
     <div class="count"><span class="dots">●</span><span>오늘 <strong id="count">0</strong>개의 포모도로를 완성했어요</span></div>
@@ -95,10 +114,21 @@
     const start = el('start'), reset = el('reset'), countEl = el('count');
     const testAlert = el('test-alert'), testResult = el('test-result');
     const durationButtons = document.querySelectorAll('[data-minutes]');
+    const dogCharacters = document.querySelectorAll('.dog-character'), dogChoices = document.querySelectorAll('.dog-choice');
     let workMinutes = 30, isWork = true, remaining = workMinutes * 60, running = false, timerId = null, deadline = null, audioContext = null;
     const todayKey = () => `pomodoro-count-${new Date().toLocaleDateString('sv-SE')}`;
 
     function getCount() { return Number(localStorage.getItem(todayKey()) || 0); }
+    function selectDog(name) {
+      dogCharacters.forEach(item => item.classList.toggle('selected', item.dataset.dog === name));
+      app.classList.toggle('dog-maltese', name === 'maltese');
+      dogChoices.forEach(item => {
+        const selected = item.dataset.choice === name;
+        item.classList.toggle('selected', selected);
+        item.setAttribute('aria-pressed', String(selected));
+      });
+      localStorage.setItem('pomodoro-dog', name);
+    }
     function draw() {
       const minutes = Math.floor(remaining / 60), seconds = remaining % 60;
       timeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -158,7 +188,9 @@
       const sent = notify('알림 테스트 🍅', '소리와 이 알림이 보이면 준비 완료예요.');
       testResult.textContent = sent ? '테스트 알림을 보냈어요.' : '브라우저 알림 권한을 다시 확인해주세요.';
     });
+    dogChoices.forEach(button => button.addEventListener('click', () => selectDog(button.dataset.choice)));
     document.addEventListener('visibilitychange', () => { if (running) tick(); });
+    selectDog(localStorage.getItem('pomodoro-dog') || 'schnauzer');
     draw();
   </script>
 </body>
