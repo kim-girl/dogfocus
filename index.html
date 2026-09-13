@@ -87,11 +87,11 @@
       <button type="button" data-minutes="60" aria-pressed="false">1시간 포모도로</button>
     </div>
     <div class="timer-wrap">
-      <div class="dog-character selected" data-dog="schnauzer">
+      <div class="dog-character" data-dog="schnauzer">
         <img class="puppy-clock" src="schnauzer-clock.png" alt="시계를 안고 있는 슈나우저 강아지" />
         <img class="puppy-clock stern" src="schnauzer-clock-stern.png" alt="" aria-hidden="true" />
       </div>
-      <div class="dog-character" data-dog="maltese">
+      <div class="dog-character selected" data-dog="maltese">
         <img class="puppy-clock" src="maltese-clock.png" alt="시계를 안고 있는 말티즈 강아지" />
         <img class="puppy-clock sniff" src="maltese-clock-sniff.png" alt="" aria-hidden="true" />
       </div>
@@ -99,8 +99,8 @@
     </div>
     <div class="buttons"><button id="start">시작하기</button><button id="reset">초기화</button></div>
     <div class="dog-selector" aria-label="강아지 선택">
-      <button class="dog-choice selected" type="button" data-choice="schnauzer" aria-pressed="true">슈나우저</button>
-      <button class="dog-choice" type="button" data-choice="maltese" aria-pressed="false">말티즈</button>
+      <button class="dog-choice" type="button" data-choice="schnauzer" aria-pressed="false">슈나우저</button>
+      <button class="dog-choice selected" type="button" data-choice="maltese" aria-pressed="true">말티즈</button>
     </div>
     <button class="alert-test" id="test-alert" type="button">알림과 소리 테스트</button>
     <p class="test-result" id="test-result" aria-live="polite"></p>
@@ -190,7 +190,7 @@
     });
     dogChoices.forEach(button => button.addEventListener('click', () => selectDog(button.dataset.choice)));
     document.addEventListener('visibilitychange', () => { if (running) tick(); });
-    selectDog(localStorage.getItem('pomodoro-dog') || 'schnauzer');
+    selectDog('maltese');
     draw();
   </script>
 </body>
