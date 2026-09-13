@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>25분이라도 집중 좀 해라</title>
+  <style>
+    @font-face {
+      font-family: "Bookk Myungjo";
+      src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/BookkMyungjo-Lt.woff2") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Bookk Myungjo";
+      src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/BookkMyungjo-Bd.woff2") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    :root {
+      --ink: #40332c;
+      --muted: #806e61;
+      --cream: #fffaf1;
+      --sand: #d9c2a2;
+      --coral: #9a6351;
+      --green: #728c76;
+      --shadow: 0 18px 45px rgba(84, 57, 42, .16);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      color: var(--ink); font-family: ui-rounded, "SF Pro Rounded", "Apple SD Gothic Neo", system-ui, sans-serif;
+      background: radial-gradient(circle at 12% 12%, #f4e4c9 0 8%, transparent 25%),
+                  radial-gradient(circle at 90% 90%, #e7dfcc 0 10%, transparent 27%), #f4eee5;
+    }
+    .app {
+      width: min(92vw, 470px); text-align: center; padding: 31px 28px 26px;
+      background: rgba(255, 250, 241, .9); border: 1px solid rgba(255,255,255,.8);
+      border-radius: 32px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
+    }
+    .top { display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .tomato { font-size: 25px; transform: rotate(-8deg); }
+    h1 { font-family: "Bookk Myungjo", "AppleMyungjo", serif; font-size: clamp(1.62rem, 5.4vw, 2.12rem); margin: 0; font-weight: 700; letter-spacing: -.07em; line-height: 1.18; }
+    .timer-wrap { position: relative; width: min(100%, 350px); height: 357px; margin: -3px auto 14px; }
+    .puppy-clock { position: absolute; inset: 0; width: 100%; height: auto; z-index: 1; pointer-events: none; }
+    .puppy-clock.stern { opacity: 0; animation: stern-look 3s ease-in-out infinite; }
+    @keyframes stern-look { 0%, 28%, 72%, 100% { opacity: 0; } 38%, 62% { opacity: 1; } }
+    .timer { position: absolute; z-index: 3; left: 50%; top: 67.5%; width: 195px; transform: translate(-50%, -50%); display: grid; place-content: center; }
+    .time { font-size: 3.35rem; font-weight: 800; letter-spacing: -.015em; margin-left: -.015em; font-variant-numeric: tabular-nums; }
+    .buttons { display: flex; justify-content: center; gap: 10px; }
+    button { border: 0; font: inherit; font-weight: 700; cursor: pointer; border-radius: 15px; padding: 13px 20px; transition: transform .15s, filter .15s; }
+    button:hover { transform: translateY(-2px); filter: brightness(.98); }
+    button:active { transform: translateY(0); }
+    #start { min-width: 126px; background: var(--coral); color: #fff; box-shadow: 0 5px 12px rgba(242,140,132,.27); }
+    #reset { background: #f2eae7; color: var(--muted); }
+    .count { margin: 28px 0 0; padding: 16px; background: #fff; border-radius: 18px; color: var(--muted); font-size: .9rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .count strong { color: var(--coral); font-size: 1.4rem; margin: 0 4px; line-height: 1; }
+    .dots { color: var(--coral); font-size: 1.2rem; line-height: 1; }
+    .note { color: var(--muted); font-size: .72rem; margin: 17px 0 0; line-height: 1.5; }
+    .rest #start { background: var(--green); box-shadow: 0 5px 12px rgba(113,173,145,.25); }
+    @media (max-width: 380px) { .app { padding: 27px 20px 22px; } .timer-wrap { width: 310px; height: 317px; } .timer { width: 173px; height: 173px; } .time { font-size: 2.95rem; } }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <div class="top"><span class="tomato" aria-hidden="true">🐾</span><h1>25분이라도 집중 좀 해라</h1></div>
+    <div class="timer-wrap">
+      <img class="puppy-clock" src="schnauzer-clock.png" alt="시계를 안고 있는 슈나우저 강아지" />
+      <img class="puppy-clock stern" src="schnauzer-clock-stern.png" alt="" aria-hidden="true" />
+      <div class="timer"><div class="time" id="time">25:00</div></div>
+    </div>
+    <div class="buttons"><button id="start">시작하기</button><button id="reset">초기화</button></div>
+    <div class="count"><span class="dots">●</span><span>오늘 <strong id="count">0</strong>개의 포모도로를 완성했어요</span></div>
+    <p class="note">타이머가 끝나면 자동으로 다음 시간으로 전환돼요.<br>알림 권한은 시작할 때 요청합니다.</p>
+  </main>
+  <script>
+    const WORK = 25 * 60, REST = 5 * 60;
+    const el = id => document.getElementById(id);
+    const app = el('app'), timeEl = el('time');
+    const start = el('start'), reset = el('reset'), countEl = el('count');
+    let isWork = true, remaining = WORK, running = false, timerId = null;
+    const todayKey = () => `pomodoro-count-${new Date().toLocaleDateString('sv-SE')}`;
+
+    function getCount() { return Number(localStorage.getItem(todayKey()) || 0); }
+    function draw() {
+      const minutes = Math.floor(remaining / 60), seconds = remaining % 60;
+      timeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      app.classList.toggle('rest', !isWork);
+      countEl.textContent = getCount();
+      document.title = `${timeEl.textContent} · ${isWork ? '집중' : '휴식'} | 25분이라도 집중 좀 해라`;
+    }
+    function chime() {
+      try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); [523.25, 659.25, 783.99].forEach((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; g.gain.setValueAtTime(.12, ctx.currentTime + i * .18); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + i * .18 + .25); o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + i * .18); o.stop(ctx.currentTime + i * .18 + .28); }); } catch (_) {}
+    }
+    function notify(title, body) { if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🍅</text></svg>' }); }
+    function finish() {
+      chime();
+      if (isWork) { localStorage.setItem(todayKey(), getCount() + 1); notify('집중 완료! 🍅', '수고했어요. 이제 5분간 쉬어가요.'); }
+      else notify('휴식 완료!', '다시 기분 좋게 집중해볼까요?');
+      isWork = !isWork; remaining = isWork ? WORK : REST; draw();
+    }
+    function tick() { if (remaining <= 0) finish(); else { remaining--; draw(); } }
+    async function toggle() {
+      if (!running && 'Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch (_) {} }
+      running = !running; start.textContent = running ? '잠시 멈추기' : '계속하기';
+      if (running) timerId = setInterval(tick, 1000); else clearInterval(timerId);
+    }
+    start.addEventListener('click', toggle);
+    reset.addEventListener('click', () => { clearInterval(timerId); running = false; remaining = isWork ? WORK : REST; start.textContent = '시작하기'; draw(); });
+    draw();
+  </script>
+</body>
+</html>
