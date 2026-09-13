@@ -37,7 +37,7 @@
                   radial-gradient(circle at 90% 90%, #e7dfcc 0 10%, transparent 27%), #f4eee5;
     }
     .app {
-      width: min(92vw, 470px); text-align: center; padding: 31px 28px 26px;
+      width: min(92vw, 470px); text-align: center; padding: 39px 28px 38px;
       background: rgba(255, 250, 241, .9); border: 1px solid rgba(255,255,255,.8);
       border-radius: 32px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
     }
@@ -50,10 +50,9 @@
     .puppy-clock { position: absolute; inset: 0; width: 100%; height: auto; z-index: 1; pointer-events: none; }
     .puppy-clock.stern { opacity: 0; animation: stern-look 3s ease-in-out infinite; }
     @keyframes stern-look { 0%, 28%, 72%, 100% { opacity: 0; } 38%, 62% { opacity: 1; } }
-    .puppy-clock.sniff { opacity: 0; animation: nose-sniff 1.25s ease-in-out infinite; }
-    @keyframes nose-sniff { 0%, 38%, 76%, 100% { opacity: 0; } 50%, 64% { opacity: 1; } }
     .timer { position: absolute; z-index: 3; left: 50%; top: 67.5%; width: 195px; transform: translate(-50%, -50%); display: grid; place-content: center; }
-    .dog-maltese .timer { top: 72.5%; }
+    .dog-character[data-dog="maltese"] .puppy-clock { width: 77.8%; left: 11.1%; right: auto; }
+    .dog-maltese .timer { left: 51.25%; top: 68.9%; }
     .time { font-size: 3.35rem; font-weight: 800; letter-spacing: -.015em; margin-left: -.015em; font-variant-numeric: tabular-nums; }
     .buttons { display: flex; justify-content: center; gap: 10px; }
     button { border: 0; font: inherit; font-weight: 700; cursor: pointer; border-radius: 15px; padding: 13px 20px; transition: transform .15s, filter .15s; }
@@ -74,7 +73,6 @@
     .count { margin: 28px 0 0; padding: 16px; background: #fff; border-radius: 18px; color: var(--muted); font-size: .9rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .count strong { color: var(--coral); font-size: 1.4rem; margin: 0 4px; line-height: 1; }
     .dots { color: var(--coral); font-size: 1.2rem; line-height: 1; }
-    .note { color: var(--muted); font-size: .72rem; margin: 17px 0 0; line-height: 1.5; }
     .rest #start { background: var(--green); box-shadow: 0 5px 12px rgba(113,173,145,.25); }
     @media (max-width: 380px) { .app { padding: 27px 20px 22px; } .timer-wrap { width: 310px; height: 317px; } .timer { width: 173px; height: 173px; } .time { font-size: 2.95rem; } }
   </style>
@@ -92,8 +90,7 @@
         <img class="puppy-clock stern" src="schnauzer-clock-stern.png" alt="" aria-hidden="true" />
       </div>
       <div class="dog-character selected" data-dog="maltese">
-        <img class="puppy-clock" src="maltese-clock.png" alt="시계를 안고 있는 말티즈 강아지" />
-        <img class="puppy-clock sniff" src="maltese-clock-sniff.png" alt="" aria-hidden="true" />
+        <img class="puppy-clock" src="말티즈.png" alt="시계를 안고 있는 말티즈 강아지" />
       </div>
       <div class="timer"><div class="time" id="time">30:00</div></div>
     </div>
@@ -105,7 +102,6 @@
     <button class="alert-test" id="test-alert" type="button">알림과 소리 테스트</button>
     <p class="test-result" id="test-result" aria-live="polite"></p>
     <div class="count"><span class="dots">●</span><span>오늘 <strong id="count">0</strong>개의 포모도로를 완성했어요</span></div>
-    <p class="note">타이머가 끝나면 자동으로 다음 시간으로 전환돼요.<br>알림 권한은 시작할 때 요청합니다.</p>
   </main>
   <script>
     const REST = 5 * 60;
