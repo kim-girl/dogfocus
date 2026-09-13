@@ -56,6 +56,9 @@
     button:active { transform: translateY(0); }
     #start { min-width: 126px; background: var(--coral); color: #fff; box-shadow: 0 5px 12px rgba(242,140,132,.27); }
     #reset { background: #f2eae7; color: var(--muted); }
+    .duration-picker { display: flex; justify-content: center; gap: 8px; margin: 17px 0 3px; }
+    .duration-picker button { padding: 8px 13px; border: 1px solid #eadbd0; border-radius: 999px; background: #fffaf6; color: var(--muted); font-size: .78rem; }
+    .duration-picker button[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
     .alert-test { margin-top: 12px; padding: 6px 9px; color: var(--muted); background: transparent; border-radius: 8px; font-size: .74rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
     .alert-test:hover { transform: none; color: var(--coral); }
     .test-result { min-height: 1.2em; margin: 3px 0 0; color: var(--muted); font-size: .7rem; }
@@ -69,11 +72,15 @@
 </head>
 <body>
   <main class="app" id="app">
-    <div class="top"><span class="tomato" aria-hidden="true">🐾</span><h1>25분이라도 집중 좀 해라</h1></div>
+    <div class="top"><span class="tomato" aria-hidden="true">🐾</span><h1 id="heading">30분이라도 집중 좀 해라</h1></div>
+    <div class="duration-picker" aria-label="집중 시간 선택">
+      <button type="button" data-minutes="30" aria-pressed="true">30분 포모도로</button>
+      <button type="button" data-minutes="60" aria-pressed="false">1시간 포모도로</button>
+    </div>
     <div class="timer-wrap">
       <img class="puppy-clock" src="schnauzer-clock.png" alt="시계를 안고 있는 슈나우저 강아지" />
       <img class="puppy-clock stern" src="schnauzer-clock-stern.png" alt="" aria-hidden="true" />
-      <div class="timer"><div class="time" id="time">25:00</div></div>
+      <div class="timer"><div class="time" id="time">30:00</div></div>
     </div>
     <div class="buttons"><button id="start">시작하기</button><button id="reset">초기화</button></div>
     <button class="alert-test" id="test-alert" type="button">알림과 소리 테스트</button>
@@ -82,12 +89,13 @@
     <p class="note">타이머가 끝나면 자동으로 다음 시간으로 전환돼요.<br>알림 권한은 시작할 때 요청합니다.</p>
   </main>
   <script>
-    const WORK = 25 * 60, REST = 5 * 60;
+    const REST = 5 * 60;
     const el = id => document.getElementById(id);
-    const app = el('app'), timeEl = el('time');
+    const app = el('app'), timeEl = el('time'), heading = el('heading');
     const start = el('start'), reset = el('reset'), countEl = el('count');
     const testAlert = el('test-alert'), testResult = el('test-result');
-    let isWork = true, remaining = WORK, running = false, timerId = null, deadline = null, audioContext = null;
+    const durationButtons = document.querySelectorAll('[data-minutes]');
+    let workMinutes = 30, isWork = true, remaining = workMinutes * 60, running = false, timerId = null, deadline = null, audioContext = null;
     const todayKey = () => `pomodoro-count-${new Date().toLocaleDateString('sv-SE')}`;
 
     function getCount() { return Number(localStorage.getItem(todayKey()) || 0); }
@@ -96,7 +104,8 @@
       timeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
       app.classList.toggle('rest', !isWork);
       countEl.textContent = getCount();
-      document.title = `${timeEl.textContent} · ${isWork ? '집중' : '휴식'} | 25분이라도 집중 좀 해라`;
+      heading.textContent = `${workMinutes === 60 ? '1시간' : `${workMinutes}분`}이라도 집중 좀 해라`;
+      document.title = `${timeEl.textContent} · ${isWork ? '집중' : '휴식'} | ${workMinutes}분 포모도로`;
     }
     function armSound() {
       try {
@@ -116,7 +125,7 @@
       chime();
       if (isWork) { localStorage.setItem(todayKey(), getCount() + 1); notify('집중 완료! 🍅', '수고했어요. 이제 5분간 쉬어가요.'); }
       else notify('휴식 완료!', '다시 기분 좋게 집중해볼까요?');
-      isWork = !isWork; remaining = isWork ? WORK : REST;
+      isWork = !isWork; remaining = isWork ? workMinutes * 60 : REST;
       deadline = Date.now() + remaining * 1000;
       draw();
     }
@@ -136,7 +145,14 @@
       else { remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000)); deadline = null; clearInterval(timerId); draw(); }
     }
     start.addEventListener('click', toggle);
-    reset.addEventListener('click', () => { clearInterval(timerId); running = false; deadline = null; remaining = isWork ? WORK : REST; start.textContent = '시작하기'; draw(); });
+    reset.addEventListener('click', () => { clearInterval(timerId); running = false; deadline = null; remaining = isWork ? workMinutes * 60 : REST; start.textContent = '시작하기'; draw(); });
+    durationButtons.forEach(button => button.addEventListener('click', () => {
+      workMinutes = Number(button.dataset.minutes);
+      clearInterval(timerId); running = false; deadline = null; isWork = true; remaining = workMinutes * 60;
+      start.textContent = '시작하기';
+      durationButtons.forEach(choice => choice.setAttribute('aria-pressed', String(choice === button)));
+      draw();
+    }));
     testAlert.addEventListener('click', () => {
       armSound(); chime();
       const sent = notify('알림 테스트 🍅', '소리와 이 알림이 보이면 준비 완료예요.');
