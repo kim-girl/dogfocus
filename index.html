@@ -124,10 +124,18 @@
     let workMinutes = 30, isWork = true, remaining = workMinutes * 60, running = false, timerId = null, deadline = null, audioContext = null;
     const todayKey = () => `pomodoro-count-${new Date().toLocaleDateString('sv-SE')}`;
     const todayMinutesKey = () => `pomodoro-minutes-${new Date().toLocaleDateString('sv-SE')}`;
+    const timerStateKey = 'pomodoro-timer-state';
+    const workMinutesKey = 'pomodoro-work-minutes';
 
     function getCount() { return Number(localStorage.getItem(todayKey()) || 0); }
     function getTotalMinutes() { return Number(localStorage.getItem(todayMinutesKey()) || 0); }
     function formatTotalMinutes(minutes) { return `${Math.floor(minutes / 60)}시간 ${minutes % 60}분`; }
+    function saveTimerState() {
+      localStorage.setItem(timerStateKey, JSON.stringify({ workMinutes, isWork, remaining, running, deadline }));
+    }
+    function updateDurationButtons() {
+      durationButtons.forEach(choice => choice.setAttribute('aria-pressed', String(Number(choice.dataset.minutes) === workMinutes)));
+    }
     function selectDog(name) {
       dogCharacters.forEach(item => item.classList.toggle('selected', item.dataset.dog === name));
       app.classList.toggle('dog-maltese', name === 'maltese');
@@ -172,6 +180,7 @@
       else notify('휴식 완료!', '다시 기분 좋게 집중해볼까요?');
       isWork = !isWork; remaining = isWork ? workMinutes * 60 : REST;
       deadline = Date.now() + remaining * 1000;
+      saveTimerState();
       draw();
     }
     function tick() {
@@ -188,14 +197,17 @@
       running = !running; start.textContent = running ? '잠시 멈추기' : '계속하기';
       if (running) { deadline = Date.now() + remaining * 1000; timerId = setInterval(tick, 500); }
       else { remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000)); deadline = null; clearInterval(timerId); draw(); }
+      saveTimerState();
     }
     start.addEventListener('click', toggle);
-    reset.addEventListener('click', () => { clearInterval(timerId); running = false; deadline = null; remaining = isWork ? workMinutes * 60 : REST; start.textContent = '시작하기'; draw(); });
+    reset.addEventListener('click', () => { clearInterval(timerId); running = false; deadline = null; remaining = isWork ? workMinutes * 60 : REST; start.textContent = '시작하기'; saveTimerState(); draw(); });
     durationButtons.forEach(button => button.addEventListener('click', () => {
       workMinutes = Number(button.dataset.minutes);
+      localStorage.setItem(workMinutesKey, workMinutes);
       clearInterval(timerId); running = false; deadline = null; isWork = true; remaining = workMinutes * 60;
       start.textContent = '시작하기';
-      durationButtons.forEach(choice => choice.setAttribute('aria-pressed', String(choice === button)));
+      updateDurationButtons();
+      saveTimerState();
       draw();
     }));
     testAlert.addEventListener('click', () => {
@@ -205,7 +217,45 @@
     });
     dogChoices.forEach(button => button.addEventListener('click', () => selectDog(button.dataset.choice)));
     document.addEventListener('visibilitychange', () => { if (running) tick(); });
-    selectDog('maltese');
+    function restoreTimer() {
+      const savedWorkMinutes = Number(localStorage.getItem(workMinutesKey));
+      if ([30, 60].includes(savedWorkMinutes)) workMinutes = savedWorkMinutes;
+      try {
+        const saved = JSON.parse(localStorage.getItem(timerStateKey));
+        if (saved && [30, 60].includes(saved.workMinutes) && typeof saved.isWork === 'boolean') {
+          workMinutes = saved.workMinutes;
+          isWork = saved.isWork;
+          if (saved.running && Number.isFinite(saved.deadline)) {
+            const restoredRemaining = Math.max(0, Math.ceil((saved.deadline - Date.now()) / 1000));
+            if (restoredRemaining > 0) {
+              remaining = restoredRemaining;
+              running = true;
+              deadline = saved.deadline;
+              start.textContent = '잠시 멈추기';
+              timerId = setInterval(tick, 500);
+            } else {
+              if (isWork) {
+                localStorage.setItem(todayKey(), getCount() + 1);
+                localStorage.setItem(todayMinutesKey(), getTotalMinutes() + workMinutes);
+              }
+              isWork = !isWork;
+              remaining = isWork ? workMinutes * 60 : REST;
+              running = true;
+              deadline = Date.now() + remaining * 1000;
+              start.textContent = '잠시 멈추기';
+              timerId = setInterval(tick, 500);
+              saveTimerState();
+            }
+          } else if (Number.isFinite(saved.remaining) && saved.remaining >= 0) {
+            remaining = saved.remaining;
+          }
+        }
+      } catch (_) {}
+      updateDurationButtons();
+    }
+    restoreTimer();
+    const savedDog = localStorage.getItem('pomodoro-dog');
+    selectDog(['schnauzer', 'maltese', 'hamster'].includes(savedDog) ? savedDog : 'maltese');
     draw();
   </script>
 </body>
